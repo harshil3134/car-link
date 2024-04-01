@@ -1,0 +1,38 @@
+mongodb atlas:harshil2223
+pass:alpha6862
+
+temp users:
+
+    "email":"alpha01@gmail.com",
+    "password":"1234567"
+    role:owner
+    cars:{mustang gt}
+    avialable date april 1-10
+
+    {
+    "email":"harshilpatel2223@gmail.com",
+    "password":"1234567"
+}
+
+
+    {"userName": "dhruv01",
+    "email": "dhruvdave01@gmail.com",
+    "password": "525252"
+role:renter
+    }
+
+    {
+        username:harsh
+        email:harsh1@gmail.com
+        pass:1234567
+        role:renter
+    }
+
+    {
+        name:snehal
+        gmail:sneh@gmail.com
+        pass:1234567
+        role:owner
+        cars{toyota corolla,tesla model y}
+        avialable date :5-15 april
+    }
