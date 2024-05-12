@@ -2,9 +2,12 @@ import { catchAsyncErrors } from "../middlewares/catchAsyncError.js";
 import {Owner} from "../models/owner.model.js"
 import ErrorHandler from "../middlewares/error.js";
 import { Vehicle } from "../models/vehicle.model.js";
-import mongoose from "mongoose";
+import { Renter } from "../models/renter.model.js";
+import mongoose,{Types} from "mongoose";
 import cloudinary from "cloudinary";
 import { Available } from "../models/available.model.js";
+import { Booking } from "../models/booking.model.js";
+
 
 export const owner_registration=catchAsyncErrors(async(req,res,next)=>{
     const {firstName,lastName,dob,aadharCardNo,contactNumber}=req.body;
@@ -95,25 +98,28 @@ res.status(200).json(
 })
 
 export const vehicle_date=catchAsyncErrors(async(req,res,next)=>{
-  let {startdate,enddate}=req.body;
+  let {carname,startdate,enddate}=req.body;
 
     startdate=new Date(startdate);
     enddate=new Date(enddate);
+
+     //to get user id
+ const user=req.user;
+ const user_id=user._id;
 
     if(user.role!="OWNER")
     {
     return next(new ErrorHandler("Invalid role", 400));
     }
 
- //to get user id
- const user=req.user;
- const user_id=user._id;
+
 
 //find user in owner by user id
    const owner= await Owner.findOne({user:user_id});
 const owner_id=owner._id;
 //find vehicle 
-const vehicle=await Vehicle.findOne({owner:owner_id})
+console.log("carname",carname)
+const vehicle=await Vehicle.findOne({carName:carname})
 const vehicle_id=vehicle._id;
 const today = new Date();
 
@@ -127,14 +133,25 @@ return next(new ErrorHandler("please add both dates",400));
 if (startdate < today || enddate < today || enddate <= startdate) {
   return next(new ErrorHandler("Please select valid dates.", 400));
 }
+const checkrecord=await Available.findOne({vehicle:vehicle_id})
 
-const dates=await Available.create(
-  {
-vehicle:vehicle_id,
-startDate:startdate,
-endDate:enddate
-  }
-)
+if(!checkrecord)
+{
+
+  const dates=await Available.create(
+    {
+  vehicle:vehicle_id,
+  startDate:startdate,
+  endDate:enddate
+    }
+  )
+}
+else{
+  const record_id=checkrecord._id;
+  let s=await Available.findByIdAndUpdate(record_id, { startDate:startdate,endDate:enddate });
+console.log("status ",s)
+}
+
 res.status(200).json(
   {
     success:true,
@@ -164,6 +181,7 @@ export const vehicle_detail_info = catchAsyncErrors(async (req, res, next) => {
 //get owner id 
 const owner_id=owner._id;
 
+console.log("id",id);
  const existing_vehicle=await Vehicle.findById(id);
  const moreInfo=existing_vehicle.moreInfo;
  console.log(req.body);
@@ -270,4 +288,114 @@ message:"Vehicle successfully added with images"
  
 )
 
+})
+export const listcars=catchAsyncErrors(async(req,res,next)=>{
+  const user=req.user;
+ const user_id=user._id;
+ let carlist=[];
+
+//find user in owner by user id
+   const owner= await Owner.findOne({user:user_id});
+const owner_id=owner._id;
+
+const vehicles=await Vehicle.find({owner:owner_id});
+console.log(vehicles);
+let carname;
+for(let i=0;i<vehicles.length;i++)
+{
+carname=vehicles[i].carName;
+carlist.push(carname);
+}
+
+res.status(200).json({
+  success:true,
+  carlist,
+  message:"car list fetched"
+})
+
+})
+
+
+
+export const fetchbookings=catchAsyncErrors(async(req,res,next)=>{
+    //find user in owner by user id
+
+  const imgarr=[];
+    //to get user id
+    const user=req.user;
+    const user_id=user._id;
+    let objarr=[];
+    let mimg;
+    if(user.role!="OWNER")
+    {
+    return next(new ErrorHandler("Invalid role", 400));
+    }
+    const owner = await Owner.findOne({ user: user_id });
+    const owner_id=owner._id;
+
+    const bookobj=await Booking.find({owner:owner})
+    console.log(bookobj);
+
+
+    for (let i = 0; i < bookobj.length; i++) {
+      let vehicle=bookobj[i].vehicle;
+      let renter=bookobj[i].renter;
+      // let vehicleid=Mongoose.ObjectId(vehicle);
+      const renterid=renter._id;
+      const id=vehicle._id
+      let startDate=new Date();
+      let endDate=new Date();
+      let bookedvehicle=await Vehicle.findById(id);
+      const renter_ac=await Renter.findById(renterid);
+      // console.log("eeeee",bookedvehicle);
+      const firstName=renter_ac.firstName;
+      const lastName=renter_ac.lastName;
+
+
+      if(bookedvehicle)
+      {
+        console.log("veh",bookobj);
+        startDate=bookobj[i].startDate;
+        endDate=bookobj[i].endDate;
+        const currentdate=new Date();
+        console.log(currentdate)
+
+        if(endDate>=currentdate)
+        {
+
+        
+
+            let moreInfo=bookedvehicle.moreInfo;
+          // console.log("moreinfo ",i,moreInfo);
+  
+           mimg=moreInfo.main_image;
+  
+      
+         const obj={
+          startDate:bookobj[i].startDate,
+          endDate:bookobj[i].endDate,
+          price:bookobj[i].price,
+          mainimg:mimg,
+          firstName:firstName,
+          lastName:lastName
+              }
+          objarr.push(obj);
+          console.log(startDate);
+        }
+      }
+   
+  }
+  
+    
+  
+   // Copy the original object and add a new property
+
+    console.log(objarr);
+    res.status(200).json({
+      success:true,
+ 
+      objarr,
+      message:"bookings fetched"
+    })
+    
 })
